@@ -2,4 +2,4 @@
 bin/
 tmp/
 *.vcxproj.user
-imgui.ini
+*imgui.ini
