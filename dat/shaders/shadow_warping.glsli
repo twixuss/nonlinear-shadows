@@ -1,0 +1,42 @@
+ENUM_TO_GLSL(WarpMode, ENUMERATE_WARP_MODES)
+ENUM_TO_GLSL(SamplingMode, ENUMERATE_SAMPLING_MODES)
+
+uniform float warping_factor;
+uniform int warp_mode;
+uniform int sampling_mode;
+uniform sampler2D reciprocal_piecewise_linear_texture;
+
+float pow2(float x) { return x*x; }
+vec2 pow2(vec2 x) { return x*x; }
+//vec2 encode(vec2 x) { return (1 - pow2(1 - min(abs(x), 1))) * sign(x); }
+//vec2 encode(vec2 x) { float f = 3; return (1 - exp2(-f * abs(x))) / (1 - exp2(-f)) * sign(x); }
+//vec2 encode(vec2 x) { return sqrt(abs(x)) * sign(x); }
+//vec2 encode(vec2 x) { return normalize(x)*sqrt(length(x)); }
+//vec2 encode(vec2 x) { return pow(abs(x), vec2(0.6)) * sign(x); }
+//vec2 encode(vec2 x) { float t = 4; return (exp(-t*abs(x)) - 1) / (exp(-t) - 1) * sign(x); }
+
+float warp_piecewise(float x) {
+	if (warping_factor < 1.5) {
+		return x;
+	}
+	if (x < 0.25) return 2*x;
+	if (x < 0.5) return x + 0.25;
+	return x*0.5 + 0.5;
+
+	// Output of this is very low precision. Shadows look like with point filtering.
+	// return texture(reciprocal_piecewise_linear_texture, vec2((clamp(x, 0, 1) * 16. + 0.5)/17, (clamp(warping_factor, 1, 4) - 0.5)/4)).x;
+}
+
+vec2 encode_half(vec2 x) {
+	float t = warping_factor;
+	switch (warp_mode) {
+		case WarpMode_reciprocal_continuous:
+			return 1 - ((1 - x) / (1 + (t - 1) * x));
+		case WarpMode_reciprocal_piecewise_linear:
+			return vec2(warp_piecewise(x.x), warp_piecewise(x.y));
+	}
+	return vec2(0);
+}
+vec2 encode(vec2 x) {
+	return encode_half(abs(x)) * sign(x);
+}
